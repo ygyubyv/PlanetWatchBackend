@@ -5,14 +5,36 @@ import {
   HttpResponseInit,
 } from "@azure/functions";
 import { getFormatedExtension } from "../helpers/getFormatedExtension";
+import { BASIC_AUTH } from "../../config";
 
-export async function assignRoleHandler(
+const isAuthorized = (request: HttpRequest): boolean => {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader || !authHeader.startsWith("Basic ")) return false;
+
+  const base64Credentials = authHeader.split(" ")[1];
+  const [username, password] = Buffer.from(base64Credentials, "base64")
+    .toString("utf-8")
+    .split(":");
+
+  const { username: BasicUsername, password: BasicPassword } = BASIC_AUTH;
+  return username === BasicUsername && password === BasicPassword;
+};
+
+export const assignRoleHandler = async (
   request: HttpRequest,
   context: InvocationContext
-): Promise<HttpResponseInit> {
+): Promise<HttpResponseInit> => {
+  if (!isAuthorized(request)) {
+    context.error("Unauthorized");
+    return {
+      status: 401,
+      headers: { "WWW-Authenticate": "Basic" },
+      jsonBody: { error: "Unauthorized" },
+    };
+  }
+
   try {
     const body = await request.json();
-
     const existingRole = body[getFormatedExtension("Role")];
 
     if (existingRole) {
@@ -44,10 +66,9 @@ export async function assignRoleHandler(
       },
     };
   }
-}
+};
 
 app.http("assignRole", {
   methods: ["POST"],
-  authLevel: "function",
   handler: assignRoleHandler,
 });

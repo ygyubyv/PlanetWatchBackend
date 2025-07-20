@@ -4,3 +4,8 @@ export const AZURE_CONFIG = {
   clientSecret: process.env.AZURE_CLIENT_SECRET!,
   extensionAppId: process.env.AZURE_EXTENSION_APP_ID!,
 };
+
+export const BASIC_AUTH = {
+  username: process.env.BASIC_AUTH_USERNAME!,
+  password: process.env.BASIC_AUTH_PASSWORD!,
+};
