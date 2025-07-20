@@ -5,7 +5,12 @@ import {
   HttpResponseInit,
 } from "@azure/functions";
 import { getFormatedExtension } from "../helpers/getFormatedExtension";
-import { BASIC_AUTH } from "../../config";
+import { BASIC_AUTH, OWNER } from "../../config";
+
+interface AssignRoleRequestBody {
+  email?: string;
+  [key: string]: any;
+}
 
 const isAuthorized = (request: HttpRequest): boolean => {
   const authHeader = request.headers.get("authorization");
@@ -33,18 +38,24 @@ export const assignRoleHandler = async (
     };
   }
 
-  try {
-    const body = await request.json();
-    const existingRole = body[getFormatedExtension("Role")];
+  const { email: ownerEmail } = OWNER;
 
-    if (existingRole) {
-      return {
-        status: 200,
-        jsonBody: {
-          version: "1.0.0",
-          action: "Continue",
-        },
-      };
+  try {
+    const body = (await request.json()) as AssignRoleRequestBody;
+
+    const userEmail = body.email?.toLowerCase();
+    const existingRole = body[getFormatedExtension("Role")] || "";
+
+    let roles = existingRole
+      ? existingRole.split(",").map((r: string) => r.trim())
+      : [];
+
+    if (userEmail === ownerEmail.toLowerCase() && !roles.includes("owner")) {
+      roles.push("owner");
+    }
+
+    if (roles.length === 0) {
+      roles.push("user");
     }
 
     return {
@@ -52,7 +63,7 @@ export const assignRoleHandler = async (
       jsonBody: {
         version: "1.0.0",
         action: "Continue",
-        [getFormatedExtension("Role")]: "user",
+        [getFormatedExtension("Role")]: roles.join(", "),
       },
     };
   } catch (err) {

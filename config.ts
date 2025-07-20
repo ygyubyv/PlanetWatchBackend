@@ -9,3 +9,7 @@ export const BASIC_AUTH = {
   username: process.env.BASIC_AUTH_USERNAME!,
   password: process.env.BASIC_AUTH_PASSWORD!,
 };
+
+export const OWNER = {
+  email: process.env.OWNER_EMAIL!,
+};
