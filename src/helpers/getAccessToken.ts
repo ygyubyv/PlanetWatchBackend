@@ -1,9 +1,8 @@
 import axios from "axios";
+import { AZURE_CONFIG } from "../../config";
 
 export const getAccessToken = async () => {
-  const tenantId = process.env.AZURE_TENANT_ID!;
-  const clientId = process.env.AZURE_CLIENT_ID!;
-  const clientSecret = process.env.AZURE_CLIENT_SECRET!;
+  const { tenantId, clientId, clientSecret } = AZURE_CONFIG;
 
   const tokenResponse = await axios.post(
     `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`,
