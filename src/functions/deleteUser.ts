@@ -4,18 +4,13 @@ import {
   HttpResponseInit,
   InvocationContext,
 } from "@azure/functions";
-
+import { deleteUserById } from "../graphApi/deleteUserById";
 import { getRolesFromToken } from "../auth/jwt/getRolesFromToken";
+import { getUserById } from "../graphApi/getUserById";
 import { rolePermissions } from "../data/rolePermissions";
 import { parseRolesFromString } from "../utils/roleConverters";
-import { updateUserRoles } from "../graphApi/updateUserRoles";
 
-interface SetUserRoleRequestBody {
-  targetUserId: string;
-  targetUserRoles: string;
-}
-
-export const setUserRole = async (
+export const deleteUserHandler = async (
   request: HttpRequest,
   context: InvocationContext
 ): Promise<HttpResponseInit> => {
@@ -30,7 +25,6 @@ export const setUserRole = async (
   }
 
   const currentUserRoles = getRolesFromToken(token);
-
   const isOwner = currentUserRoles.includes("owner");
   const isAdmin = currentUserRoles.includes("admin");
 
@@ -41,13 +35,21 @@ export const setUserRole = async (
     };
   }
 
+  const userId = request.params.id;
+
+  if (!userId) {
+    return {
+      status: 400,
+      jsonBody: { error: "Missing user ID in route" },
+    };
+  }
+
   try {
-    const body = (await request.json()) as SetUserRoleRequestBody;
-    const { targetUserId, targetUserRoles } = body;
+    const targetUser = await getUserById(userId);
 
     const allowedRoles = rolePermissions[isOwner ? "owner" : "admin"];
 
-    const isAllowed = parseRolesFromString(targetUserRoles).every((role) =>
+    const isAllowed = parseRolesFromString(targetUser.role).every((role) =>
       allowedRoles.includes(role)
     );
 
@@ -58,23 +60,23 @@ export const setUserRole = async (
       };
     }
 
-    await updateUserRoles(targetUserId, targetUserRoles);
+    await deleteUserById(userId);
 
     return {
-      status: 200,
-      jsonBody: { success: true },
+      status: 204,
     };
   } catch (error) {
-    context.error("Error assigning role");
+    context.error("Error deleting user:", error.message || error);
     return {
       status: 500,
-      jsonBody: { error: "Internal server error" },
+      jsonBody: { error: "Failed to delete user" },
     };
   }
 };
 
-app.http("setUserRole", {
-  methods: ["POST"],
-  handler: setUserRole,
+app.http("deleteUserById", {
+  methods: ["DELETE"],
+  handler: deleteUserHandler,
   authLevel: "anonymous",
+  route: "users/{id}",
 });
